@@ -43,7 +43,7 @@ var tasks = map[string]Task{
 // Ниже обработчики для каждого эндпоинта
 
 // Обработчик для получения всех задач
-func firstHandle(res http.ResponseWriter, req *http.Request) {
+func getTasks(res http.ResponseWriter, req *http.Request) {
 	out, err := json.Marshal(tasks)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
@@ -51,11 +51,11 @@ func firstHandle(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
-	res.Write([]byte(out))
+	_, _ = res.Write(out)
 }
 
 // Обработчик для отправки задачи на сервер
-func secondHandle(res http.ResponseWriter, req *http.Request) {
+func addTask(res http.ResponseWriter, req *http.Request) {
 	var buf bytes.Buffer
 	var task Task
 	// прочтение тела запроса
@@ -69,9 +69,9 @@ func secondHandle(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	_, ok = tasks[task.ID]
+	_, ok := tasks[task.ID]
 	if ok {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Задача уже существует.", http.StatusBadRequest)
 		return
 	}
 	tasks[task.ID] = task
@@ -80,12 +80,12 @@ func secondHandle(res http.ResponseWriter, req *http.Request) {
 }
 
 // Обработчик для получения задачи по ID
-func thirdHandle(res http.ResponseWriter, req *http.Request) {
+func getTask(res http.ResponseWriter, req *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	task, ok := tasks[id]
 	if !ok {
-		http.Error(res, "Задача не найдена.", http.StatusNoContent)
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -112,7 +112,7 @@ func deleteTask(res http.ResponseWriter, req *http.Request) {
 
 	task, ok := tasks[id]
 	if !ok {
-		http.Error(res, "Задача не найдена", http.StatusNoContent)
+		http.Error(res, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
@@ -125,8 +125,8 @@ func deleteTask(res http.ResponseWriter, req *http.Request) {
 func main() {
 	r := chi.NewRouter()
 	// здесь зарегистрированы обработчики
-	r.Get("/tasks", firstHandle)
-	r.Post("/tasks", postTask)
+	r.Get("/tasks", getTasks)
+	r.Post("/tasks", addTask)
 	r.Get("/tasks/{id}", getTask)
 	r.Delete("/tasks/{id}", deleteTask)
 
