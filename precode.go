@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
 
-// Task ...
 type Task struct {
 	ID           string   `json:"id"`
 	Description  string   `json:"description"`
@@ -39,14 +40,96 @@ var tasks = map[string]Task{
 	},
 }
 
-// Ниже напишите обработчики для каждого эндпоинта
-// ...
+// Ниже обработчики для каждого эндпоинта
+
+// Обработчик для получения всех задач
+func getTasks(res http.ResponseWriter, req *http.Request) {
+	out, err := json.Marshal(tasks)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	_, _ = res.Write(out)
+}
+
+// Обработчик для отправки задачи на сервер
+func addTask(res http.ResponseWriter, req *http.Request) {
+	var buf bytes.Buffer
+	var task Task
+	// прочтение тела запроса
+	_, err := buf.ReadFrom(req.Body)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// перевод JSON в Task
+	if err = json.Unmarshal(buf.Bytes(), &task); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, ok := tasks[task.ID]
+	if ok {
+		http.Error(res, "Задача уже существует.", http.StatusBadRequest)
+		return
+	}
+	tasks[task.ID] = task
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+}
+
+// Обработчик для получения задачи по ID
+func getTask(res http.ResponseWriter, req *http.Request) {
+	id := chi.URLParam(req, "id")
+
+	task, ok := tasks[id]
+	if !ok {
+		http.Error(res, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	t, err := json.Marshal(task)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+	_, _ = res.Write(t)
+}
+
+// Обработчик удаления задачи по ID
+
+func deleteTask(res http.ResponseWriter, req *http.Request) {
+	// как я понял из ревью, это просто убираем из кода:
+	// if req.Method != http.MethodDelete {
+	// http.Error(res, "Not Found", http.StatusNotFound)
+	// return
+	// }
+
+	id := chi.URLParam(req, "id")
+
+	task, ok := tasks[id]
+	if !ok {
+		http.Error(res, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	delete(tasks, task.ID)
+
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusOK)
+}
 
 func main() {
 	r := chi.NewRouter()
-
-	// здесь регистрируйте ваши обработчики
-	// ...
+	// здесь зарегистрированы обработчики
+	r.Get("/tasks", getTasks)
+	r.Post("/tasks", addTask)
+	r.Get("/tasks/{id}", getTask)
+	r.Delete("/tasks/{id}", deleteTask)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		fmt.Printf("Ошибка при запуске сервера: %s", err.Error())
