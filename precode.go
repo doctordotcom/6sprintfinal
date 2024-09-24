@@ -59,7 +59,7 @@ func addTask(res http.ResponseWriter, req *http.Request) {
 	var buf bytes.Buffer
 	var task Task
 	// прочтение тела запроса
-	_, err := buf.ReadFrom(r.Body)
+	_, err := buf.ReadFrom(req.Body)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -71,21 +71,21 @@ func addTask(res http.ResponseWriter, req *http.Request) {
 	}
 	_, ok := tasks[task.ID]
 	if ok {
-		http.Error(w, "Задача уже существует.", http.StatusBadRequest)
+		http.Error(res, "Задача уже существует.", http.StatusBadRequest)
 		return
 	}
 	tasks[task.ID] = task
 	res.Header().Set("Content-Type", "application/json")
-	res.WriteHeader(http.StatusOK)
+	res.WriteHeader(http.StatusCreated)
 }
 
 // Обработчик для получения задачи по ID
 func getTask(res http.ResponseWriter, req *http.Request) {
-	id := chi.URLParam(r, "id")
+	id := chi.URLParam(req, "id")
 
 	task, ok := tasks[id]
 	if !ok {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		http.Error(res, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
@@ -97,16 +97,17 @@ func getTask(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "application/json")
 	res.WriteHeader(http.StatusOK)
-	res.Write(t)
+	_, _ = res.Write(t)
 }
 
 // Обработчик удаления задачи по ID
 
 func deleteTask(res http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodDelete {
-		http.Error(res, "Bad Request", http.StatusBadRequest)
-		return
-	}
+	// как я понял из ревью, это просто убираем из кода:
+	// if req.Method != http.MethodDelete {
+	// http.Error(res, "Not Found", http.StatusNotFound)
+	// return
+	// }
 
 	id := chi.URLParam(req, "id")
 
